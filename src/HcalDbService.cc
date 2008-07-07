@@ -1,7 +1,7 @@
 //
 // F.Ratnikov (UMd), Aug. 9, 2005
 //
-// $Id: HcalDbService.cc,v 1.20 2008/03/08 13:58:20 rofierzy Exp $
+// $Id: HcalDbService.cc,v 1.23 2008/05/15 16:44:56 mansj Exp $
 
 #include "FWCore/Framework/interface/eventsetupdata_registration_macro.h"
 
@@ -14,7 +14,6 @@
 
 #include "DataFormats/HcalDetId/interface/HcalGenericDetId.h"
 
-#include "RecoLocalCalo/CaloTowersCreator/interface/EScales.h"
 #include <cmath>
 
 HcalDbService::HcalDbService (const edm::ParameterSet& cfg)
@@ -80,6 +79,7 @@ void HcalDbService::buildCalibrations() {
     if (ok) mCalibSet.setCalibrations(*id,tool);
     //    std::cout << "Hcal calibrations built... detid no. " << HcalGenericDetId(*id) << std::endl;
   }
+  mCalibSet.sort();
 }
 
 bool HcalDbService::makeHcalCalibrationWidth (const HcalGenericDetId& fId, HcalCalibrationWidths* fObject) const {
