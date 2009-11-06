@@ -1,7 +1,7 @@
 //
 // F.Ratnikov (UMd), Aug. 9, 2005
 //
-// $Id: HcalDbService.cc,v 1.29 2009/05/19 16:06:09 rofierzy Exp $
+// $Id: HcalDbService.cc,v 1.30 2009/05/20 15:54:26 rofierzy Exp $
 
 #include "FWCore/Framework/interface/eventsetupdata_registration_macro.h"
 
@@ -16,60 +16,33 @@
 
 #include <cmath>
 
-HcalDbService::HcalDbService (const edm::ParameterSet& cfg)
-  : 
-  mQieShapeCache (0),
-  mPedestals (0),
-  mPedestalWidths (0),
-  mGains (0),
-  mGainWidths (0),
-  mQIEData(0),
+HcalDbService::HcalDbService (const edm::ParameterSet& cfg): 
+  mQieShapeCache (0), mQIEData(0), 
+  mPedestals (0), mPedestalWidths (0),
+  mGains (0), mGainWidths (0),  
   mElectronicsMap(0),
   mRespCorrs(0),
   mL1TriggerObjects(0),
   mTimeCorrs(0),
   mLUTCorrs(0),
-  mPFCorrs(0)
+  mPFCorrs(0),
+  mUpdateCalibrations (true), mUpdateCalibWidths(true)
  {}
 
-bool HcalDbService::makeHcalCalibration (const HcalGenericDetId& fId, HcalCalibrations* fObject, bool pedestalInADC) const {
-  if (fObject) {
-    const HcalPedestal* pedestal = getPedestal (fId);
-    const HcalGain* gain = getGain (fId);
-    const HcalRespCorr* respcorr = getHcalRespCorr (fId);
-    const HcalTimeCorr* timecorr = getHcalTimeCorr (fId);
-    const HcalLUTCorr* lutcorr = getHcalLUTCorr (fId);
 
-    if (pedestalInADC) {
-      const HcalQIEShape* shape=getHcalShape();
-      const HcalQIECoder* coder=getHcalCoder(fId);
-      if (pedestal && gain && shape && coder && respcorr && timecorr && lutcorr) {
-	float pedTrue[4];
-	for (int i=0; i<4; i++) {
-	  float x=pedestal->getValues()[i];
-	  int x1=(int)std::floor(x);
-	  int x2=(int)std::floor(x+1);
-	  // y = (y2-y1)/(x2-x1) * (x - x1) + y1  [note: x2-x1=1]
-	  float y2=coder->charge(*shape,x2,i);
-	  float y1=coder->charge(*shape,x1,i);
-	  pedTrue[i]=(y2-y1)*(x-x1)+y1;
-	}
-	*fObject = HcalCalibrations (gain->getValues (), pedTrue, respcorr->getValue(), timecorr->getValue(), lutcorr->getValue() );
-	return true; 
-      }
-    } else {
-      if (pedestal && gain && respcorr && timecorr && lutcorr) {
-	*fObject = HcalCalibrations (gain->getValues (), pedestal->getValues (), respcorr->getValue(), timecorr->getValue(), lutcorr->getValue() );
-	return true;
-      }
-    }
-  }
-  return false;
+void HcalDbService::update()
+{
+  if (mUpdateCalibrations) buildCalibrations();
+  if (mUpdateCalibWidths) buildCalibWidths();
+
+  mUpdateCalibrations = false;
+  mUpdateCalibWidths = false;
 }
 
 void HcalDbService::buildCalibrations() {
   // we use the set of ids for pedestals as the master list
   if ((!mPedestals) || (!mGains) || (!mQIEData) || (!mRespCorrs) || (!mTimeCorrs) || (!mLUTCorrs) ) return;
+
   std::vector<DetId> ids=mPedestals->getAllChannels();
   bool pedsInADC = mPedestals->isADC();
   // clear the calibrations set
@@ -108,6 +81,41 @@ void HcalDbService::buildCalibWidths() {
     //    std::cout << "Hcal calibrations built... detid no. " << HcalGenericDetId(*id) << std::endl;
   }
   mCalibWidthSet.sort();
+}
+
+bool HcalDbService::makeHcalCalibration (const HcalGenericDetId& fId, HcalCalibrations* fObject, bool pedestalInADC) const {
+  if (fObject) {
+    const HcalPedestal* pedestal = getPedestal (fId);
+    const HcalGain* gain = getGain (fId);
+    const HcalRespCorr* respcorr = getHcalRespCorr (fId);
+    const HcalTimeCorr* timecorr = getHcalTimeCorr (fId);
+    const HcalLUTCorr* lutcorr = getHcalLUTCorr (fId);
+
+    if (pedestalInADC) {
+      const HcalQIEShape* shape=getHcalShape();
+      const HcalQIECoder* coder=getHcalCoder(fId);
+      if (pedestal && gain && shape && coder && respcorr && timecorr && lutcorr) {
+	float pedTrue[4];
+	for (int i=0; i<4; i++) {
+	  float x=pedestal->getValues()[i];
+	  int x1=(int)std::floor(x);
+	  int x2=(int)std::floor(x+1);
+	  // y = (y2-y1)/(x2-x1) * (x - x1) + y1  [note: x2-x1=1]
+	  float y2=coder->charge(*shape,x2,i);
+	  float y1=coder->charge(*shape,x1,i);
+	  pedTrue[i]=(y2-y1)*(x-x1)+y1;
+	}
+	*fObject = HcalCalibrations (gain->getValues (), pedTrue, respcorr->getValue(), timecorr->getValue(), lutcorr->getValue() );
+	return true; 
+      }
+    } else {
+      if (pedestal && gain && respcorr && timecorr && lutcorr) {
+	*fObject = HcalCalibrations (gain->getValues (), pedestal->getValues (), respcorr->getValue(), timecorr->getValue(), lutcorr->getValue() );
+	return true;
+      }
+    }
+  }
+  return false;
 }
 
 bool HcalDbService::makeHcalCalibrationWidth (const HcalGenericDetId& fId, 
