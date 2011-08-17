@@ -2,8 +2,8 @@
     
     coder which uses DB services to convert to fC
     $Author: ratnikov
-    $Date: 2011/01/21 22:33:39 $
-    $Revision: 1.1.2.1 $
+    $Date: 2011/05/09 22:13:42 $
+    $Revision: 1.1.4.2 $
 */
 
 #include "CondFormats/HcalObjects/interface/HcalQIECoder.h"
@@ -60,7 +60,7 @@ void HcalCoderUpgrade::fC2adc(const CaloSamples& clf, HcalUpgradeDataFrame& df,
   df = HcalUpgradeDataFrame(clf.id(), fCapIdOffset, clf.size(), 
 			    clf.presamples());
   for (int i=0; i<clf.size(); ++i) {
-    df.setSample(i - df.presamples(), mCoder->adc(*mShape, clf[i], df.capId(i)),
+    df.setSample(i, mCoder->adc(*mShape, clf[i], df.capId(i)),
 		 0, true);
   }
 }
